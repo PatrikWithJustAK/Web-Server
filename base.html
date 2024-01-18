@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Pat's Go App</title>
+</head>
+<body>
+    <div class="grid grid-cols-3 bg-red-200 w-full h-screen fixed-0 left-0" id="AppContainer">
+        <div class="col-span-3 justify-center justify-items-center bg-red-500 bg-cover" id="NavContainer">
+            <h1 class="bold px-2">Welcome to my Go App</h1>
+            <ul class="my-2 px-2">
+                <li>Home</li>
+                <li>About</li>
+                <li>Contact</li>
+            </ul>
+        </div>
+        {{range .}}
+        <div class="col-start-2 justify-center justify-items-center bg-blue-800 row-span-8 rounded-lg m-2" id="BodyContainer">
+            <h1 class="font-bold text-white m-2">{{.Title}}</h1>
+            <p class="text-rose-100 m-2">
+                {{.Body}}
+            </p>
+        </div>
+        Item number: {{.ID}}
+        {{end}}
+    </div>
+</body>
+</html>
