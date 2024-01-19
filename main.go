@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -15,42 +16,37 @@ type BlogPost struct {
 	Body  string
 }
 
+var (
+	db   *gorm.DB
+	tmpl *template.Template
+)
+
 func main() {
-
-	http.HandleFunc("/", LandingPageHandeler)
-	http.HandleFunc("/submit_blog/", submitBlogPost)
-	http.HandleFunc("/add_blog/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl := template.Must(template.ParseFiles("add_blog.html"))
-		tmpl.Execute(w, nil)
-	})
-
-	http.ListenAndServe(":80", nil)
-
-}
-func LandingPageHandeler(w http.ResponseWriter, r *http.Request) {
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	timestamp := time.Now().Format(time.RFC3339)
+	log.Printf("HTTP Server started running at %s", timestamp)
+	var err error
+	db, err = gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to connect database", err)
 	}
 	db.AutoMigrate(&BlogPost{})
+	tmpl = template.Must(template.ParseFiles("base.html", "add_blog.html"))
+	http.HandleFunc("/", LandingPageHandeler)
+	http.HandleFunc("/submit_blog/", submitBlogPost)
+	http.HandleFunc("/add_blog/", addBlogHandler)
+	http.HandleFunc("/delete_blog/", deleteBlogHandler)
+	log.Fatal(http.ListenAndServe(":80", nil))
+
+}
+
+func LandingPageHandeler(w http.ResponseWriter, r *http.Request) {
 	var blogPosts []BlogPost
 	result := db.Find(&blogPosts)
 	if result.Error != nil {
 		http.Error(w, "Error retrieving blog posts", http.StatusInternalServerError)
 		return
 	}
-
-	tmpl := template.Must(template.ParseFiles("base.html"))
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	tmpl.Execute(w, blogPosts)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	tmpl.ExecuteTemplate(w, "base.html", blogPosts)
 }
 
 func submitBlogPost(w http.ResponseWriter, r *http.Request) {
@@ -58,28 +54,45 @@ func submitBlogPost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	// Parse form values
+	logDBConnection(r)
 	r.ParseForm()
 	title := r.FormValue("title")
 	content := r.FormValue("content")
 
-	// Create a new BlogPost
 	blogPost := BlogPost{Title: title, Body: content}
-
-	// Connect to DB
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("failed db connection %v", err)
+	result := db.Create(&blogPost)
+	if result.Error != nil {
+		http.Error(w, "Error saving blog post", http.StatusInternalServerError)
+		return
 	}
-	//Migrate DB
-	err = db.AutoMigrate(&BlogPost{})
-	if err != nil {
-		log.Fatalf("failed to auto-migrate: %v", err)
-	}
-	// Save to database
-	db.Create(&blogPost)
 
-	// Redirect or respond
-	http.Redirect(w, r, "/add_blog/", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func addBlogHandler(w http.ResponseWriter, r *http.Request) {
+
+	tmpl := template.Must(template.ParseFiles("add_blog.html"))
+	tmpl.Execute(w, nil)
+
+}
+
+func logDBConnection(r *http.Request) {
+	ip := r.RemoteAddr
+	timestamp := time.Now().Format(time.RFC3339)
+	log.Printf("DB connected successfully at %s from IP: %s\n", timestamp, ip)
+}
+func deleteBlogHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	id := r.FormValue("id")
+	result := db.Delete(&BlogPost{}, id)
+	if result.Error != nil {
+		http.Error(w, "Error deleting blog post", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Delete succesful")
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+
 }

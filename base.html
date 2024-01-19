@@ -11,19 +11,27 @@
         <div class="col-span-3 justify-center justify-items-center bg-red-500 bg-cover" id="NavContainer">
             <h1 class="bold px-2">Welcome to my Go App</h1>
             <ul class="my-2 px-2">
-                <li>Home</li>
-                <li>About</li>
+                <li><a href="/">Home</a></li>
+                <li><a href="/add_blog/">Add</a></li>
                 <li>Contact</li>
             </ul>
         </div>
         {{range .}}
-        <div class="col-start-2 justify-center justify-items-center bg-blue-800 row-span-8 rounded-lg m-2" id="BodyContainer">
+        <div class="col-start-2 justify-center justify-items-center row-span-8 bg-blue-800 rounded-lg m-2 relative" id="BodyContainer">
             <h1 class="font-bold text-white m-2">{{.Title}}</h1>
             <p class="text-rose-100 m-2">
                 {{.Body}}
             </p>
+            <div class="absolute bottom-0 right-0 m-2">
+                <form action="/delete_blog/" method="post">
+                    <input type="hidden" name="id" value="{{.ID}}">
+                    <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Delete Post
+                    </button>
+                </form>
+            </div>
         </div>
-        Item number: {{.ID}}
+
         {{end}}
     </div>
 </body>
